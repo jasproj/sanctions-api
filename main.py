@@ -12,8 +12,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sanctions-api")
 
 # --- Config ---
+# Holds the ITA developer-portal SUBSCRIPTION KEY (developer.trade.gov), sent as a header.
 TRADEGOV_API_KEY = os.getenv("TRADEGOV_API_KEY")
-BASE_URL = "https://api.trade.gov/consolidated_screening_list/search"
+BASE_URL = "https://data.trade.gov/consolidated_screening_list/v1/search"
 HTTP_TIMEOUT = 10.0
 CACHE_TTL = 3600  # 1h — sanctions data is time-sensitive; CSL updates hourly
 HIGH_SCORE_THRESHOLD = 95.0  # tunable; see note in classify_risk
@@ -170,11 +171,12 @@ async def _call_csl(name: str, sources: Optional[str], fuzzy: bool) -> Dict[str,
     hit = cache.get(key)
     if hit and hit["expiry"] > now:
         return hit["data"]
-    params = {"api_key": TRADEGOV_API_KEY, "q": name, "fuzzy_name": str(fuzzy).lower(), "size": 50}
+    params = {"q": name, "fuzzy_name": str(fuzzy).lower(), "size": 50}
     if sources:
         params["sources"] = sources
+    headers = {"subscription-key": TRADEGOV_API_KEY}
     try:
-        resp = await client.get(BASE_URL, params=params)
+        resp = await client.get(BASE_URL, params=params, headers=headers, follow_redirects=False)
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Trade.gov request timed out.")
     if resp.status_code in (401, 403):
