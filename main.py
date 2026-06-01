@@ -171,7 +171,7 @@ async def _call_csl(name: str, sources: Optional[str], fuzzy: bool) -> Dict[str,
     hit = cache.get(key)
     if hit and hit["expiry"] > now:
         return hit["data"]
-    params = {"q": name, "fuzzy_name": str(fuzzy).lower(), "size": 50}
+    params = {"name": name, "fuzzy_name": str(fuzzy).lower(), "size": 50}
     if sources:
         params["sources"] = sources
     headers = {"subscription-key": TRADEGOV_API_KEY}
@@ -184,7 +184,7 @@ async def _call_csl(name: str, sources: Optional[str], fuzzy: bool) -> Dict[str,
     try:
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=502, detail=f"Trade.gov upstream error: {e}")
+        raise HTTPException(status_code=502, detail=f"Trade.gov upstream error {resp.status_code}: {resp.text[:300]}")
     data = resp.json()
     cache[key] = {"expiry": now + CACHE_TTL, "data": data}
     return data
